@@ -1,5 +1,5 @@
 """KGFIPL internal portal backend. Python 3.8+, no extra packages. Run: python3 server.py"""
-import sqlite3,json,os,hmac,hashlib,secrets,io,zipfile,mimetypes,base64,time
+import sqlite3,json,os,hmac,hashlib,secrets,io,zipfile,mimetypes,base64,time,calendar
 from datetime import datetime,timedelta,timezone,date
 from http.server import ThreadingHTTPServer,BaseHTTPRequestHandler
 from urllib.parse import urlparse,parse_qs
@@ -85,9 +85,14 @@ def blocked(k):
 def D(v):return ''.join(ch for ch in str(v) if ch.isdigit())[-10:]
 def z(v):return str(v).lstrip('0')
 def maplink(r):return 'https://www.google.com/maps?q=%s,%s'%(r['lat'],r['lng']) if r else ''
+def add_months(d, months):
+    month_index = d.year * 12 + (d.month - 1) + months
+    year, month_zero = divmod(month_index, 12)
+    month = month_zero + 1
+    return date(year, month, min(d.day, calendar.monthrange(year, month)[1]))
 def rows(f,t,segs,ecode=None):
     d0,d1=date.fromisoformat(f),date.fromisoformat(t)
-    if d1<d0 or (d1-d0).days>92:raise ValueError('Choose a date range of up to 92 days')
+    if d1<d0 or d1>add_months(d0,6):raise ValueError('Choose a date range of up to 6 months')
     c=db()
     emps=c.execute('select * from employees where active=1 order by seg,dept,ecode').fetchall()
     hs={e['ecode']:e['seg'] for e in emps};att={};day={}
@@ -192,7 +197,8 @@ class H(BaseHTTPRequestHandler):
                 if R in ('emp','accounts'):c.execute('update sessions set logout=? where date=? and ecode=?',(now().strftime('%H:%M:%S'),today,U['ecode']));c.commit()
                 TOK.pop(t,None);return s.out(200,{})
             if p=='/api/me/history' and R in ('emp','accounts'):
-                return s.out(200,rows((now()-timedelta(14)).date().isoformat(),today,[int(U['seg'])],U['ecode']))
+                history_from=add_months(now().date(),-6).isoformat()
+                return s.out(200,rows(history_from,today,[int(U['seg'])],U['ecode']))
             if p=='/api/attendance' and m=='POST' and R in ('emp','accounts'):
                 entered=str(body.get('ecode','')).strip().upper()
                 expected=str(U['ecode']).upper()

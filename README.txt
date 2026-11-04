@@ -90,3 +90,5 @@ IMPORTANT FREE-TIER DATA WARNING
   after restarts or redeploys. Use only sample/test data on Render Free. Do not store actual
   employee or attendance records until database and photo storage are moved to persistent
   services.
+
+Attendance history and report date ranges now support up to 6 calendar months.
